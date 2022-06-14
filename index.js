@@ -17,43 +17,37 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms :b
 
 
 // info page
-app.get('/info', (request, response) => {
-    let amount = persons.length
-    let date = new Date()
-    response.send(`
-        <p>PhoneBook has info for ${amount} people</p>
-        <p>${date}</p>`)
+app.get('/info', (request, response, next) => {
+    Person.countDocuments({}).then(count => {
+      const info = `<p>Phonebook has info for ${count} people</p>`
+      info += new Date()
+      response.send(info)
+    }).catch(error => next(error))
 })
 
 // get all persons
-app.get('/api/persons', (request, response) => {
-    //response.json(persons)
+app.get('/api/persons', (request, response, next) => {
     Person.find({}).then(persons=> {
-      //response.json(result.map(person => person.toJSON()))
       response.json(persons)
     })
 })
 
 // get individual person
-app.get('/api/persons/:id', (request, response) => {
+app.get('/api/persons/:id', (request, response, next) => {
   Person.findById(request.params.id).then(person => {
-    response.json(person)
-  })
-  /*
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
     if (person) {
         response.json(person)
       } else {
         response.status(404).end()
-      } */
+      }
+  })
+  .catch(error => next(error))
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id !== id)
-  
-    response.status(204).end()
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndRemove(request.params.id)
+    .then(result => {response.status(204).end()})
+  .catch(error => next(error))
 })
 
 const generateId = () => {
@@ -61,7 +55,7 @@ const generateId = () => {
     return id
   }
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
     const body = request.body
 
     // missing name or number
@@ -101,12 +95,51 @@ app.post('/api/persons', (request, response) => {
         number: body.number,
     })
 
-    //persons = persons.concat(person)
-    //response.json(person)
     person.save().then(savedPerson => {
       response.json(savedPerson)
     })
+    .catch(error => next(error))
 })
+
+/* Update an existing person */
+app.put('/api/persons/:id', (request, response, next) => {
+  const body = request.body
+
+  // missing name or number
+  if (!body.name) {
+    return response.status(400).json({ 
+      error: 'name missing' 
+    })
+  }
+
+  if (!body.number) {
+      return response.status(400).json({ 
+        error: 'number missing' 
+      })
+  }
+
+  const updatedPerson = {
+    name: body.name,
+    number: body.number
+  }
+  Person.findByIdAndUpdate(request.params.id, updatedPerson, {new: true}).then(result => {
+    response.json(result)
+  }).catch(error => next(error))
+})
+
+// ERROR HANDLERS
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } 
+
+  next(error)
+}
+
+// this has to be the last loaded middleware.
+app.use(errorHandler)
 
 
 const PORT = process.env.PORT

@@ -1,2 +1,2 @@
 //GET https://powerful-gorge-85773.herokuapp.com/api/persons
-GET http://localhost:3001/api/persons
+GET http://localhost:3001/api/persons/6
