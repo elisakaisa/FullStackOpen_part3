@@ -4,6 +4,6 @@ Content-Type: application/json
 
 {
     //"name": "Arto Hellas",
-    "name": "test",
-    "number": "0000"
+    "name": "test heroku",
+    "number": "000-000000"
 }
